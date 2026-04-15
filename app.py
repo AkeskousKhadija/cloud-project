@@ -9,7 +9,12 @@ import os
 
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-socketio = SocketIO(app, manage_session=False)
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode="eventlet",
+    manage_session=False
+)
 
 # Dictionary to store client sessions
 client_sessions = {}
@@ -219,7 +224,8 @@ def index():
     data['staff_labels'] = staff_labels  # Ensure staff_labels is included
     return render_template("index.html", data=data)
 
+socketio.start_background_task(background_task)
+
 if __name__ == "__main__":
-    socketio.start_background_task(background_task)
     port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host="0.0.0.0", port=port, debug=False)
+    socketio.run(app, host="0.0.0.0", port=port)
