@@ -25,7 +25,7 @@ df_vehicles = pd.read_excel("./Healthcare_Dashboard_Full_Data.xlsx", sheet_name=
 today = datetime(2026, 4, 14)
 
 # Compute monthly inpatients and outpatients from historical data (2025)
-df_patients_2025 = df_patients[df_patients['Registration_Date'].dt.year == 2025]
+df_patients_2025 = df_patients[df_patients['Registration_Date'].dt.year == 2025].copy()
 df_patients_2025['Month'] = df_patients_2025['Registration_Date'].dt.to_period('M')
 monthly_counts_2025 = df_patients_2025.groupby(['Month', 'Type']).size().unstack(fill_value=0)
 inpatient_counts_2025 = monthly_counts_2025.get('Inpatient', pd.Series()).values.tolist()
@@ -78,17 +78,20 @@ def compute_data_for_year(year):
     # Fixed data for each year
     if year == 2025:
         # Utiliser les données réelles de l'Excel pour 2025
-        df_2025 = df_patients[df_patients['Registration_Date'].dt.year == 2025]
+        df_2025 = df_patients[df_patients['Registration_Date'].dt.year == 2025].copy()
         
         total_patients = int(len(df_2025))
         hospitalized = int(df_2025['Discharge_Date'].isna().sum())
-        admissions_week = int(df_2025[(df_2025['Registration_Date'] >= datetime(2025, today.month, today.day) - timedelta(days=7))].shape[0])
-        admissions_month = int(df_2025[(df_2025['Registration_Date'] >= datetime(2025, today.month, today.day) - timedelta(days=30))].shape[0])
+        
+        # Calculer les admissions pour 2025
+        target_date_2025 = datetime(2025, today.month, today.day)
+        admissions_week = int(df_2025[(df_2025['Registration_Date'] >= target_date_2025 - timedelta(days=7))].shape[0])
+        admissions_month = int(df_2025[(df_2025['Registration_Date'] >= target_date_2025 - timedelta(days=30))].shape[0])
         
         # Calculer les tendances mensuelles pour 2025
         df_2025['Month'] = df_2025['Registration_Date'].dt.to_period('M')
         monthly_data = df_2025.groupby(['Month', 'Type']).size().unstack(fill_value=0)
-        months = [f'2025-{i}' for i in range(1, 13)]
+        months = [f'2025-{str(i).zfill(2)}' for i in range(1, 13)]
         
         trend_in_data = []
         trend_out_data = []
@@ -115,7 +118,7 @@ def compute_data_for_year(year):
         staff_data = [int(staff_counts_2025.get(role, 0)) for role in staff_labels]
         
         # Données des véhicules pour 2025
-        vehicles_data = [12, 7, 3]  # Valeurs par défaut pour 2025
+        vehicles_data = [12, 7, 3]
         
         # Calculer les pourcentages de changement
         delta_total = 5.2
@@ -176,10 +179,43 @@ def compute_data_for_year(year):
         delta_month = (data_2025['delta_month'] * data_2025['admissions_month'] + 
                       data_2026['delta_month'] * data_2026['admissions_month']) / admissions_month if admissions_month > 0 else 0
         
-        # Utiliser les données de tendance en temps réel pour Total
-        months = real_time_labels
-        trend_in_data = real_time_in_data
-        trend_out_data = real_time_out_data
+        # POUR TOTAL : Utiliser des labels mensuels au lieu du temps réel
+        # Créer des labels mensuels pour Total (janvier à décembre)
+        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        
+        # Combiner les données mensuelles de 2025 et 2026 pour chaque mois
+        trend_in_data = []
+        trend_out_data = []
+        
+        # Créer un mapping des données par mois pour 2025
+        data_2025_in_by_month = {}
+        data_2025_out_by_month = {}
+        for i, label in enumerate(data_2025['trend_labels']):
+            if len(label) >= 7 and '-' in label:  # Format '2025-01'
+                month_num = int(label.split('-')[1])
+                month_name = months[month_num - 1]
+                data_2025_in_by_month[month_name] = data_2025['trend_in_data'][i]
+                data_2025_out_by_month[month_name] = data_2025['trend_out_data'][i]
+        
+        # Créer un mapping des données par mois pour 2026
+        data_2026_in_by_month = {}
+        data_2026_out_by_month = {}
+        for i, label in enumerate(data_2026['trend_labels']):
+            if len(label) >= 7 and '-' in label:  # Format '2026-01'
+                month_num = int(label.split('-')[1])
+                month_name = months[month_num - 1]
+                data_2026_in_by_month[month_name] = data_2026['trend_in_data'][i]
+                data_2026_out_by_month[month_name] = data_2026['trend_out_data'][i]
+        
+        # Combiner les données pour chaque mois (somme des deux années)
+        for month in months:
+            in_2025 = data_2025_in_by_month.get(month, 0)
+            in_2026 = data_2026_in_by_month.get(month, 0)
+            out_2025 = data_2025_out_by_month.get(month, 0)
+            out_2026 = data_2026_out_by_month.get(month, 0)
+            
+            trend_in_data.append(in_2025 + in_2026)
+            trend_out_data.append(out_2025 + out_2026)
         
         # Sommer les données des départements
         dept_data = [data_2025['dept_data'][i] + data_2026['dept_data'][i] for i in range(len(data_2025['dept_data']))]
