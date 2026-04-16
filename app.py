@@ -126,9 +126,6 @@ def compute_data_for_year(year):
         delta_week = 10.5
         delta_month = 8.3
         
-        # Pour 2025, afficher tous les mois
-        display_labels = [f"{i:02d}/2025" for i in range(1, 13)]
-        
     elif year == 2026:
         # Utiliser les données générées aléatoirement pour 2026
         base_patients = 1350
@@ -161,10 +158,7 @@ def compute_data_for_year(year):
         staff_data = [val + random.randint(-5, 5) for val in [67, 59, 51]]
         vehicles_data = [val + random.randint(-2, 2) for val in [12, 7, 3]]
         
-        # Pour 2026, afficher les mois avec format MM/2026
-        display_labels = [f"{i:02d}/2026" for i in range(1, today.month + 1)]
-        
-    else:  # "Total" - Afficher les 6 derniers mois
+    else:  # "Total" - Comparaison entre mois actuel et même mois de l'année dernière
         # Récupérer les données de 2025 et 2026
         data_2025 = compute_data_for_year(2025)
         data_2026 = compute_data_for_year(2026)
@@ -185,54 +179,43 @@ def compute_data_for_year(year):
         delta_month = (data_2025['delta_month'] * data_2025['admissions_month'] + 
                       data_2026['delta_month'] * data_2026['admissions_month']) / admissions_month if admissions_month > 0 else 0
         
-        # POUR TOTAL : Afficher les 6 derniers mois
-        current_month = today.month
-        current_year = today.year
+        # POUR TOTAL : Comparaison entre le mois actuel et le même mois de l'année dernière
+        current_month_num = today.month
+        current_month_str = f"{current_month_num:02d}/{today.year}"
+        last_year_month_str = f"{current_month_num:02d}/{today.year - 1}"
         
-        # Générer les 6 derniers mois (inclut les mois de 2025 et 2026 si nécessaire)
-        last_6_months = []
-        for i in range(5, -1, -1):
-            month = current_month - i
-            year = current_year
-            if month <= 0:
-                month += 12
-                year -= 1
-            last_6_months.append((year, month))
+        # Labels pour le graphique (2 barres: mois actuel vs même mois année dernière)
+        months = [last_year_month_str, current_month_str]
         
-        # Créer les labels au format MM/YYYY
-        display_labels = [f"{month:02d}/{year}" for year, month in last_6_months]
+        # Extraire les données pour le mois actuel de 2026
+        current_month_in_2026 = 0
+        current_month_out_2026 = 0
         
-        # Extraire les données pour chaque mois (combinaison 2025 + 2026)
-        trend_in_data = []
-        trend_out_data = []
+        # Extraire les données pour le même mois de 2025
+        current_month_in_2025 = 0
+        current_month_out_2025 = 0
         
-        for year, month in last_6_months:
-            if year == 2025:
-                # Chercher dans les données 2025
-                in_val = 0
-                out_val = 0
-                for i, label in enumerate(data_2025['trend_labels']):
-                    if len(label) >= 7 and '-' in label:
-                        month_num = int(label.split('-')[1])
-                        if month_num == month:
-                            in_val = data_2025['trend_in_data'][i]
-                            out_val = data_2025['trend_out_data'][i]
-                            break
-                trend_in_data.append(in_val)
-                trend_out_data.append(out_val)
-            else:  # year == 2026
-                # Chercher dans les données 2026
-                in_val = 0
-                out_val = 0
-                for i, label in enumerate(data_2026['trend_labels']):
-                    if len(label) >= 7 and '-' in label:
-                        month_num = int(label.split('-')[1])
-                        if month_num == month:
-                            in_val = data_2026['trend_in_data'][i]
-                            out_val = data_2026['trend_out_data'][i]
-                            break
-                trend_in_data.append(in_val)
-                trend_out_data.append(out_val)
+        # Chercher les données pour 2026 (mois actuel)
+        for i, label in enumerate(data_2026['trend_labels']):
+            if len(label) >= 7 and '-' in label:
+                month_num = int(label.split('-')[1])
+                if month_num == current_month_num:
+                    current_month_in_2026 = data_2026['trend_in_data'][i]
+                    current_month_out_2026 = data_2026['trend_out_data'][i]
+                    break
+        
+        # Chercher les données pour 2025 (même mois)
+        for i, label in enumerate(data_2025['trend_labels']):
+            if len(label) >= 7 and '-' in label:
+                month_num = int(label.split('-')[1])
+                if month_num == current_month_num:
+                    current_month_in_2025 = data_2025['trend_in_data'][i]
+                    current_month_out_2025 = data_2025['trend_out_data'][i]
+                    break
+        
+        # Données du graphique: [année dernière, année actuelle]
+        trend_in_data = [current_month_in_2025, current_month_in_2026]
+        trend_out_data = [current_month_out_2025, current_month_out_2026]
         
         # Sommer les données des départements
         dept_data = [data_2025['dept_data'][i] + data_2026['dept_data'][i] for i in range(len(data_2025['dept_data']))]
@@ -247,17 +230,8 @@ def compute_data_for_year(year):
         
         # Sommer les données des véhicules
         vehicles_data = [data_2025['vehicles_data'][i] + data_2026['vehicles_data'][i] for i in range(len(data_2025['vehicles_data']))]
-        
-        # Pour Total, utiliser les labels des 6 derniers mois
-        months = display_labels
-        
+    
     dept_labels = ["Cardiology", "Neurology", "Surgery", "Pediatrics", "Oncology"]
-
-    # Pour 2025 et 2026, utiliser les display_labels créés
-    if year == 2025:
-        months = display_labels
-    elif year == 2026:
-        months = display_labels
 
     return {
         'trend_labels': months,
