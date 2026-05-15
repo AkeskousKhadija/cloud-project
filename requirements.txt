@@ -3,5 +3,6 @@ pandas==2.2.3
 openpyxl==3.1.5
 flask-socketio==5.3.6
 python-socketio==5.11.2
-eventlet
+gevent
+gevent-websocket
 gunicorn
