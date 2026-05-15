@@ -6,7 +6,8 @@ from flask import request
 import random
 import time
 import os
-
+import eventlet
+eventlet.monkey_patch()
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(
